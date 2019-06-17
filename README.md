@@ -1,4 +1,4 @@
-# annotator
+# Annotator
 Allows to label data using painting or flood filling.
 It opens tiff stacks and videos (as supported by imageio ```mimread```), and
 can operate on single frames.
@@ -8,6 +8,14 @@ supports also multi-labels (across multiple time steps / z).
 
 To try out the ```annotator``` tool, simple close the **Open File** dialog,
 to get some dummy data.
+
+# Dependencies
+
+- PyQt5 (in Anaconda)
+- Deepdish (```pip install deepdish```)
+- ImageIO (in Anaconda)
+- PyQtGraph (```pip install pyqtgraph```)
+- Scikit-image (in Anaconda)
 
 # How it works
 
