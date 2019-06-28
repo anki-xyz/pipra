@@ -1,12 +1,8 @@
-# Annotator
-Allows to label data using painting or flood filling.
-It opens tiff stacks and videos (as supported by imageio ```mimread```), and
-can operate on single frames.
+# PiPrA (Pixel Precise Annotator)
+```PiPrA``` allows to label data in a binary fashing (fore-and background) pixel-precisely, using painting or flood filling.
+It opens tiff stacks and videos (as supported by imageio ```mimread```), and can operate on single frames.
 
-This version operates only on foreground/background, the next version
-supports also multi-labels (across multiple time steps / z).
-
-To try out the ```annotator``` tool, simple close the **Open File** dialog,
+To try out the ```PiPrA``` tool, simple close the **Open File** dialog,
 to get some dummy data.
 
 # Dependencies
@@ -47,4 +43,8 @@ These shortcuts make your life much easier:
 - ```2``` make brush smaller (as small as 1 px)
 - ```8``` make brush bigger 
 
+# How to cite PiPrA
 
+We published ```PiPrA``` here, please use the following citation:
+
+tbd.
