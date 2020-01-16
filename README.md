@@ -8,14 +8,14 @@ to get some dummy data.
 # Dependencies
 
 - PyQt5 (in Anaconda)
-- Deepdish (```pip install deepdish```)
 - ImageIO (in Anaconda)
-- PyQtGraph (```pip install pyqtgraph```)
 - Scikit-image (in Anaconda)
+- [flammkuchen](https://github.com/portugueslab/flammkuchen) (```pip install flammkuchen```)
+- [PyQtGraph](http://www.pyqtgraph.org/) (```pip install pyqtgraph```)
 
 # How it works
 
-1) Open a video
+1) Open a video or a folder with images (currently, PiPrA is looking for PNGs only)
 2) The brush is by default magenta, the foreground green, you can change these colors in the settings, 
 and you are able to save and restore old settings.
 3) Draw with left mouse click, you can paint a larger surface by keeping the left mouse button pressed.
@@ -28,6 +28,8 @@ and you are able to save and restore old settings.
 # Saving
 
 Everything is stored as HDF5 file, the dimensions are (z/time, x, y), dtype is boolean.
+Use ```flammkuchen``` or ```PyTables``` to read the file.
+Also, when annotating a folder, it contains a list of the filenames in the same order as the masks.
 
 # Shortcuts
 
