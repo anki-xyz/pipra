@@ -413,6 +413,7 @@ class Main(QMainWindow):
         self.files = None
 
         self.setGeometry(300, 300, 800, 600)
+        self.setWindowTitle("PiPrA")
 
     def setEqualize(self):
         if self.stack:
