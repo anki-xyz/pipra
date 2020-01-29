@@ -19,7 +19,7 @@ to get some dummy data.
 2) The brush is by default magenta, the foreground green, you can change these colors in the settings, 
 and you are able to save and restore old settings.
 3) Draw with left mouse click, you can paint a larger surface by keeping the left mouse button pressed.
-4) Remove area with right mouse click
+4) Remove area with right mouse click with given brush size
 5) Use the mouse wheel to zoom in/out 
 6) Adjust contrast/brightness by adjusting the levels on the right hand side. These settings are kept for the entire video.
 7) To move the scene, keep the ```Shift``` key pressed.
@@ -36,11 +36,13 @@ Also, when annotating a folder, it contains a list of the filenames in the same 
 These shortcuts make your life much easier:
 
 - ```X``` to remove the mask
+- ```Ctrl+Left Click``` flood fill, seeded with the clicked px
+- ```Shift+Left Click+Mouse move``` Move scene
 - ```Ctrl+Z``` go back in history
 - ```Ctrl+S``` save mask/segmentation
 - ```C``` copy mask from previous frame
 - ```Q``` toggle mask on/off
-- ```W```, ```A```, ```S```, ```D``` to change frame forward/backward
+- ```W```, ```A```, ```S```, ```D``` to change frame forward (```W, D```)/backward (```A, S```)
 - ```M``` change brush from circle to block
 - ```2``` make brush smaller (as small as 1 px)
 - ```8``` make brush bigger 
