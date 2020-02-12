@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
-    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox
+    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtCore import Qt, pyqtSignal
 import pyqtgraph as pg
@@ -66,6 +66,7 @@ class Annotator(pg.ImageView):
 
         self.history = []
         self.saved = True
+        self.tolerance = 5
 
         # Colors
         self.colorCursor = (255, 0, 100, 255)  # magenta
@@ -219,7 +220,8 @@ class Annotator(pg.ImageView):
                 im = (rgb2gray(self.getImageItem().image)*255).astype(np.uint8)
                 f = floodfill(im,
                               (int(xy.x()),
-                               int(xy.y())))
+                               int(xy.y())),
+                               tolerance=self.tolerance)
 
                 self.mask[f == 1] = val
 
@@ -403,8 +405,10 @@ class Main(QMainWindow):
         self.settings.setDisabled(True)
         self.settings.addAction("Set Mask Color", self.setMaskColor)
         self.settings.addAction("Set Cursor Color", self.setCursorColor)
+        self.settings.addAction("Change tolerance", self.changeTolerance)
         self.settings.addAction("Save settings", self.saveSettings)
         self.settings.addAction("Load settings", self.loadSettings)
+        
 
         self.fn = None
         self.list = None
@@ -418,6 +422,18 @@ class Main(QMainWindow):
     def setEqualize(self):
         if self.stack:
             self.stack.equalize = self.equalize.isChecked()
+
+    def changeTolerance(self):
+        i, ok = QInputDialog.getInt(self, 
+        "Set tolerance", 
+        "floodfill tolerance [grayscale], default 5:", 
+        self.stack.w.tolerance, 
+        0, 
+        100, 
+        1)
+
+        if ok:
+            self.stack.w.tolerance = i
 
     def saveSettings(self):
         settings_fn = QFileDialog.getSaveFileName(filter="*.settings")[0]
@@ -499,7 +515,8 @@ class Main(QMainWindow):
             else:
                 mask = None
 
-            self.stack = Stack((rgb2gray(s)*255).astype(np.uint8) if len(s.shape) == 4 else s, mask)
+            # self.stack = Stack((rgb2gray(s)*255).astype(np.uint8) if len(s.shape) == 4 else s, mask)
+            self.stack = Stack(s, mask)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
             self.stack.w.keyPressSignal.connect(self.savekeyboard)

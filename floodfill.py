@@ -54,11 +54,11 @@ def _floodfill(im, seed, tolerance=5):
 
     return segmented
 
-def floodfill(im, seed, time_it=False):
+def floodfill(im, seed, time_it=False, tolerance=5):
     if time_it:
         t0 = time.time()
 
-    f = _floodfill(im, seed)
+    f = _floodfill(im, seed, tolerance=tolerance)
 
     if time_it:
         print("Flood fill took {:.2f} s".format(time.time()-t0))
