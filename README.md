@@ -51,4 +51,4 @@ These shortcuts make your life much easier:
 
 We published ```PiPrA``` here, please use the following citation:
 
-tbd.
+Gómez, P., Kist, A.M., Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3
