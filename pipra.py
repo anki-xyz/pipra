@@ -252,7 +252,7 @@ class Annotator(pg.ImageView):
         return self.mask.sum(2) > 0
 
     def setZ(self, im, mask=None, levels=None):
-        self.setImage(im)
+        self.setImage(im, autoRange=False, autoLevels=False)
         self.history = []
         self.shape = im.shape[:2]
 
@@ -374,10 +374,12 @@ class Stack(QWidget):
                 self.mask[self.curId] = self.mask[self.curId-1]
                 # Get the state (i.e. position, zoom, ...)
                 viewBoxState = self.w.getView().getState()
+                levels = self.w.getImageItem().levels
                 # Set new mask
                 self.w.setZ(self.stack[self.curId], self.mask[self.curId])
                 # Set view again
                 self.w.getView().setState(viewBoxState)
+                self.w.getImageItem().setLevels(levels)
 
     def getMasks(self):
         self.mask[self.curId] = self.w.getMask()
@@ -505,9 +507,21 @@ class Main(QMainWindow):
 
             self.d = os.path.dirname(self.fn)
 
-            s = io.mimread(file, memtest=False)
-            s = np.array(s, dtype=s[0].dtype).transpose(0, 2, 1, 3)
-            print("Stack shape: ", s.shape)
+            if file.endswith("nrrd"):
+                import nrrd
+                s, metadata = nrrd.read(file)
+                s = s.transpose(2, 0, 1).copy()
+                s = np.repeat(s[..., None], 3, 3)
+
+            else:
+                s = io.mimread(file, memtest=False)
+
+                if len(s[0].shape) == 2:
+                    s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1)
+                    s = np.repeat(s[..., None], 3, 3)
+                else:
+                    s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1, 3)
+                print("Stack shape: ", s.shape)
 
             if os.path.isfile(self.fn_mask):
                 mask = fl.load(self.fn_mask, "/mask")
