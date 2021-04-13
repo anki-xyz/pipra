@@ -1,4 +1,7 @@
 # PiPrA (Pixel Precise Annotator)
+
+![PiPrA Logo](ims/pipra.png)
+
 ```PiPrA``` allows to label data in a binary fashing (fore-and background) pixel-precisely, using painting or flood filling.
 It opens tiff stacks and videos (as supported by imageio ```mimread```), and can operate on single frames.
 
