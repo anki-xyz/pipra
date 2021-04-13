@@ -15,11 +15,33 @@ from floodfill import floodfill
 
 
 class customImageItem(pg.ImageItem):
+    wheel_change = pyqtSignal(int)
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.clicked = False
         self.mode = 'add'
         self.save_history = False
+        self.spaceIsDown = False
+
+    def wheelEvent(self, wh, ax=None):
+        """Wheel event in image scene
+
+        Args:
+            wh (Wheel event): Contains information about the wheel
+            ax (axis, optional): Wheel axis. Defaults to None.
+        """
+        modifiers = QApplication.keyboardModifiers()
+
+        # Use Ctrl+Wheel to navigate through the stack
+        if modifiers == Qt.ControlModifier:
+            # Check for scrolling direction
+            wheel_event_direction = int(np.sign(wh.delta()))
+            self.wheel_change.emit(wheel_event_direction)
+
+        # Use wheel for zooming
+        else:
+            super().wheelEvent(wh)
 
     def mouseDragEvent(self, e):
         modifiers = QApplication.keyboardModifiers()
@@ -27,7 +49,7 @@ class customImageItem(pg.ImageItem):
         # When SHIFT is pressed,
         #  allow left mouse drag
         #  and right mouse zoom
-        if modifiers == Qt.ShiftModifier:
+        if modifiers == Qt.ShiftModifier or self.spaceIsDown:
             super().mouseDragEvent(e)
 
         # Otherwise, add pixels to mask
@@ -57,8 +79,6 @@ class Annotator(pg.ImageView):
     def __init__(self, im, mask=None, parent=None):
         # Set Widget as parent to show ImageView in Widget
         super().__init__(parent=parent)
-
-        print(im.shape)
 
         # Set 2D image
         self.setImage(im)
@@ -117,6 +137,10 @@ class Annotator(pg.ImageView):
         # self.getView().setLeftButtonAction('rect') # Zoom via rectangle
 
     def keyPressEvent(self, ev):
+        if ev.isAutoRepeat():
+            ev.ignore()
+            return
+
         self.keyPressSignal.emit(ev.key())
         modifiers = QApplication.keyboardModifiers()
 
@@ -155,12 +179,23 @@ class Annotator(pg.ImageView):
         elif ev.key() == Qt.Key_X:
             self.mask[:, :] = False
 
+        elif ev.key() == Qt.Key_Space:
+            self.maskItem.spaceIsDown = True
+
         self.paint()
+
+    def keyReleaseEvent(self, ev):
+        if ev.isAutoRepeat():
+            ev.ignore()
+            return
+
+        if ev.key() == Qt.Key_Space and self.maskItem.spaceIsDown:
+            self.maskItem.spaceIsDown = False
 
     def mousePressEvent(self, e):
         modifiers = QApplication.keyboardModifiers()
 
-        if modifiers != Qt.ShiftModifier:
+        if modifiers != Qt.ShiftModifier and not self.maskItem.spaceIsDown:
             if e.button() == Qt.LeftButton:
                 self.maskItem.mode = 'add'
                 self.maskItem.save_history = True
@@ -246,7 +281,8 @@ class Annotator(pg.ImageView):
         self.xy = e[0]
 
         # Call painting routine to update cursor and mask images
-        self.paint()
+        if not self.maskItem.spaceIsDown:
+            self.paint()
 
     def getMask(self):
         return self.mask.sum(2) > 0
@@ -322,7 +358,10 @@ class Stack(QWidget):
         self.z.setValue(0)
         self.z.setSingleStep(1)
         self.z.valueChanged.connect(self.changeZ)
+
+        # Listen to signals from other the pyqtgraph widget and the custom Image Item
         self.w.keyPressSignal.connect(self.keyPress)
+        self.w.maskItem.wheel_change.connect(self.wheelChange)
 
         self.l.addWidget(QLabel("z position"), 1, 0)
         self.l.addWidget(self.z, 1, 1)
@@ -356,6 +395,9 @@ class Stack(QWidget):
 
         self.w.getView().setState(viewBoxState)
         self.w.getImageItem().setLevels(levels)
+
+    def wheelChange(self, direction):
+        self.z.setValue(self.curId+direction)
 
     def keyPress(self, key):
         modifiers = QApplication.keyboardModifiers()
@@ -410,6 +452,8 @@ class Main(QMainWindow):
         self.settings.addAction("Change tolerance", self.changeTolerance)
         self.settings.addAction("Save settings", self.saveSettings)
         self.settings.addAction("Load settings", self.loadSettings)
+        # Prepare for dynamic shortcuts
+        # self.settings.addAction("Change shortcuts", self.changeShortcuts)
         
 
         self.fn = None
