@@ -13,6 +13,8 @@ to get some dummy data.
 - [flammkuchen](https://github.com/portugueslab/flammkuchen) (```pip install flammkuchen```)
 - [PyQtGraph](http://www.pyqtgraph.org/) (```pip install pyqtgraph```)
 
+Works with the latest libraries much better (PyQt5==5.15.4, pyqtgraph==0.12.1, python==3.7.10).
+
 # How it works
 
 1) Open a video or a folder with images (currently, PiPrA is looking for PNGs only)
@@ -46,6 +48,11 @@ These shortcuts make your life much easier:
 - ```M``` change brush from circle to block
 - ```2``` make brush smaller (as small as 1 px)
 - ```8``` make brush bigger 
+
+## New shortcuts
+
+- `Space pressed+Left Click+Mouse move` Move scene (similar to photoshop)
+- `Ctrl+Mouse wheel` change frame forward (wheel up) and backward (wheel down)
 
 # How to cite PiPrA
 
