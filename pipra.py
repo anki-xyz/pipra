@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
-    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog
+    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction
 from PyQt5.QtGui import QPainter, QColor
 from PyQt5.QtCore import Qt, pyqtSignal
 import pyqtgraph as pg
@@ -7,7 +7,7 @@ import numpy as np
 import imageio as io
 import flammkuchen as fl
 import os
-from skimage.draw import circle
+from skimage.draw import disk
 from skimage.color import rgb2gray
 import json
 from glob import glob
@@ -87,6 +87,7 @@ class Annotator(pg.ImageView):
         self.history = []
         self.saved = True
         self.tolerance = 5
+        self.only_darker_px = True
 
         # Colors
         self.colorCursor = (255, 0, 100, 255)  # magenta
@@ -137,7 +138,7 @@ class Annotator(pg.ImageView):
         # self.getView().setLeftButtonAction('rect') # Zoom via rectangle
 
     def keyPressEvent(self, ev):
-        if ev.isAutoRepeat():
+        if ev.isAutoRepeat() and ev.key() == Qt.Key_Space:
             ev.ignore()
             return
 
@@ -233,7 +234,7 @@ class Annotator(pg.ImageView):
 
         # Circle
         else:
-            rr, cc = circle(xy.x(), xy.y(), radius, self.shape)
+            rr, cc = disk((xy.x(), xy.y()), radius, shape=self.shape)
             cursorMask[rr, cc] = True
 
         # Show the cursorMask colored
@@ -256,7 +257,8 @@ class Annotator(pg.ImageView):
                 f = floodfill(im,
                               (int(xy.x()),
                                int(xy.y())),
-                               tolerance=self.tolerance)
+                               tolerance=self.tolerance,
+                               only_darker_px=self.only_darker_px)
 
                 self.mask[f == 1] = val
 
@@ -449,7 +451,15 @@ class Main(QMainWindow):
         self.settings.setDisabled(True)
         self.settings.addAction("Set Mask Color", self.setMaskColor)
         self.settings.addAction("Set Cursor Color", self.setCursorColor)
+        self.settings.addSeparator()
         self.settings.addAction("Change tolerance", self.changeTolerance)
+
+        self.onlyDarkerPx = QAction("Floodfill only for darker pixel", self, checkable=True)
+        self.onlyDarkerPx.setChecked(True)
+        self.onlyDarkerPx.triggered.connect(self.setOnlyDarkerPx)
+
+        self.settings.addAction(self.onlyDarkerPx)
+        self.settings.addSeparator()
         self.settings.addAction("Save settings", self.saveSettings)
         self.settings.addAction("Load settings", self.loadSettings)
         # Prepare for dynamic shortcuts
@@ -468,6 +478,9 @@ class Main(QMainWindow):
     def setEqualize(self):
         if self.stack:
             self.stack.equalize = self.equalize.isChecked()
+
+    def setOnlyDarkerPx(self):
+        self.stack.w.only_darker_px = self.onlyDarkerPx.isChecked()
 
     def changeTolerance(self):
         i, ok = QInputDialog.getInt(self, 
@@ -491,6 +504,8 @@ class Main(QMainWindow):
                 json.dump({
                     'colorCursor': self.stack.w.colorCursor,
                     'colorMask': self.stack.w.colorMask,
+                    'tolerance': self.stack.w.tolerance,
+                    'onlyDarkerPx': self.onlyDarkerPx.isChecked()
                 }, fp, indent=4)
 
             self.settings_fn = settings_fn
@@ -503,8 +518,21 @@ class Main(QMainWindow):
             with open(settings_fn, 'r') as fp:
                 settings = json.load(fp)
 
-            self.stack.w.setColor(colorCursor=settings['colorCursor'],
-                                  colorMask=settings['colorMask'])
+            try:
+                self.stack.w.setColor(colorCursor=settings['colorCursor'],
+                                    colorMask=settings['colorMask'])
+            except Exception as e:
+                print(f"Could not set settings color: \n{e}")
+
+            try:
+                self.stack.w.tolerance = settings['tolerance']
+            except Exception as e:
+                print(f"Could not set settings tolerance: \n{e}")
+
+            try:
+                self.onlyDarkerPx.setChecked(settings['onlyDarkerPx'])
+            except Exception as e:
+                print(f"Could not set settings only darker px: \n{e}")
 
             self.stack.changeZ()
 
