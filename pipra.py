@@ -446,6 +446,10 @@ class Main(QMainWindow):
         self.file.addAction("Open file", self.open)
         self.file.addAction("Open folder", self.openFolder)
         self.file.addAction("Save", self.save)
+        self.file.addSeparator()
+        self.file.addAction("Export mask", self.export)
+        self.file.addSeparator()
+        self.file.addAction("Close", self.close)
 
         self.settings = self.menu.addMenu("&Settings")
         self.settings.setDisabled(True)
@@ -667,7 +671,11 @@ class Main(QMainWindow):
 
 
     def save(self):
-        if self.fn:
+        if not self.fn:
+            QMessageBox.critical(self, "No file loaded", "Please load first a file.")
+            return
+
+        else:
             self.stack.w.saved = True
 
             if "ö" in self.fn or "ü" in self.fn or "ö" in self.fn:
@@ -688,11 +696,47 @@ class Main(QMainWindow):
 
             self.status.showMessage("Masks saved as {} ...".format(self.fn_mask), 1000)
 
+    def export(self):
+        if not self.fn:
+            QMessageBox.critical(self, "No file loaded", "Please load first a file.")
+            return
+
+        fn = QFileDialog.getSaveFileName(caption="Select file that should contain exported data",
+            filter="MP4 (*.mp4);; TIFF (*.tif)")[0]
+
+        if fn:
+            if fn.endswith(".tif"):
+                io.mimwrite(fn, self.stack.getMasks().astype(np.uint8).transpose(0,2,1)*255)
+                QMessageBox.information(self,
+                    "Data exported",
+                    f"Binary masks where exported as uint8/TIF file: \n{fn}")
+
+            elif fn.endswith(".mp4"):
+                io.mimwrite(fn, 
+                    self.stack.getMasks().astype(np.uint8).transpose(0,2,1)*255,
+                    macro_block_size=None)
+
+                QMessageBox.information(self,
+                    "Data exported",
+                    f"Binary masks where exported as MP4 file: \n{fn}")
+
+            else:
+                pass
+        
+
     def savekeyboard(self, key):
         modifiers = QApplication.keyboardModifiers()
 
         if key == Qt.Key_S and modifiers == Qt.ControlModifier:
             self.save()
+
+    def close(self):
+        reply = QMessageBox.question(self,
+            "Closing?",
+            "Do you really want to close PiPrA?\nHave you saved everything?")
+
+        if reply == QMessageBox.Yes:
+            super().close()
 
 if __name__ == '__main__':
     import sys
