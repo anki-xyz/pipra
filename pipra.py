@@ -643,7 +643,22 @@ class Main(QMainWindow):
 
         if folder:
             files = glob(os.path.join(folder, "*."+ext))
-            ims = [io.imread(fn).transpose(1, 0, 2) for fn in files]
+
+            ims = []
+
+            for fn in files:
+                im = io.imread(fn)
+
+                if len(im.shape) == 2:
+                    im = im.transpose(1, 0)
+
+                elif len(im.shape) == 3:
+                    im = im.transpose(1, 0, 2)
+
+                ims.append(im)
+
+            # Bug if not RGB-images:
+            # ims = [io.imread(fn).transpose(1, 0, 2) for fn in files]
 
             self.fn = folder
             self.files = files
