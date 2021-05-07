@@ -1,13 +1,13 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
-    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction
-from PyQt5.QtGui import QPainter, QColor
-from PyQt5.QtCore import Qt, pyqtSignal
-import pyqtgraph as pg
+    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction, QGraphicsPolygonItem
+from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 import numpy as np
+import pyqtgraph as pg
 import imageio as io
 import flammkuchen as fl
 import os
-from skimage.draw import disk
+from skimage.draw import disk, polygon
 from skimage.color import rgb2gray
 import json
 from glob import glob
@@ -16,6 +16,7 @@ from floodfill import floodfill
 
 class customImageItem(pg.ImageItem):
     wheel_change = pyqtSignal(int)
+    mouseRelease = pyqtSignal()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -68,6 +69,7 @@ class customImageItem(pg.ImageItem):
 
             elif e.isFinish():
                 self.clicked = False
+                self.mouseRelease.emit()
 
             else:
                 self.save_history = False
@@ -102,6 +104,10 @@ class Annotator(pg.ImageView):
 
         # XY coordinates of mouse
         self.xy = None
+        self.xys = []
+        self.polygon = QGraphicsPolygonItem(QPolygonF(self.xys))
+        self.polygon.setPen(QPen(Qt.red, 1, Qt.SolidLine))
+        self.getView().addItem(self.polygon)
 
         # Current cursor map
         self.currentCursor = np.zeros(self.shape + (4,), dtype=np.uint8)
@@ -171,6 +177,15 @@ class Annotator(pg.ImageView):
         elif ev.key() == Qt.Key_M:
             self.mode = 'circle' if self.mode == 'block' else 'block'
 
+        elif ev.key() == Qt.Key_O:
+            if self.mode != 'outline':
+                self.mode = 'outline'
+                self.enableOutline()
+
+            else:
+                self.mode = 'circle'
+                self.disableOutline()
+
         elif ev.key() == Qt.Key_Z and modifiers == Qt.ControlModifier:
             if len(self.history):
                 old_mask = self.history.pop()
@@ -197,10 +212,13 @@ class Annotator(pg.ImageView):
         modifiers = QApplication.keyboardModifiers()
 
         if modifiers != Qt.ShiftModifier and not self.maskItem.spaceIsDown:
-            if e.button() == Qt.LeftButton:
+            if e.button() == Qt.LeftButton and self.mode != 'outline':
                 self.maskItem.mode = 'add'
                 self.maskItem.save_history = True
                 self.paint(True)
+
+            elif e.button() == Qt.LeftButton and self.mode == 'outline':
+                self.recordPolygon()
 
             if e.button() == Qt.RightButton:
                 self.maskItem.mode = 'remove'
@@ -233,9 +251,12 @@ class Annotator(pg.ImageView):
                        int(xy.y() - radius // 2):int(xy.y() + radius // 2) + 1] = True
 
         # Circle
-        else:
+        elif self.mode == 'circle':
             rr, cc = disk((xy.x(), xy.y()), radius, shape=self.shape)
             cursorMask[rr, cc] = True
+
+        elif self.mode == 'outline':
+            pass
 
         # Show the cursorMask colored
         self.currentCursor[cursorMask] = self.colorCursor
@@ -278,13 +299,54 @@ class Annotator(pg.ImageView):
         # Debugging - found out that one needs to accept the drag event
         # self.setWindowTitle('{}'.format(self.maskItem.clicked))
 
+    def enableOutline(self):
+        self.setCursor(QCursor(Qt.PointingHandCursor))
+
+    def disableOutline(self):
+        self.setCursor(QCursor(Qt.ArrowCursor))
+
+    def recordPolygon(self):
+        if self.maskItem.clicked:
+            # Store location
+            xy = self.getImageItem().mapFromScene(self.xy)
+            self.xys.append(xy)
+        
+            # Create polygon to be drawn on image temporarily
+            p = self.polygon.polygon()
+            p.append(xy)
+            self.polygon.setPolygon(p)
+
+    def mouseReleaseEvent(self):
+        if not self.mode == 'outline':
+            return
+
+        # Create polygon from xy locations
+        xys = [(i.x(), i.y()) for i in self.xys]
+        xys = np.asarray(xys, dtype=np.int32)
+        rr, cc = polygon(xys[:,0], xys[:,1], self.shape)
+
+        if self.maskItem.save_history:
+            self.history.append(self.mask.copy())
+
+        # Add polygon px inside of contour to mask
+        self.mask[rr, cc] = self.colorMask
+        # Update mask
+        self.maskItem.setImage(self.mask)
+
+        # Reset polygon for next drawing
+        self.xys = []
+        self.polygon.setPolygon(QPolygonF())
+
     def mouseMoveEvent(self, e):
         # Save mouse position
         self.xy = e[0]
 
         # Call painting routine to update cursor and mask images
-        if not self.maskItem.spaceIsDown:
+        if not self.maskItem.spaceIsDown and not self.mode == 'outline':
             self.paint()
+
+        elif self.mode == 'outline':
+            self.recordPolygon()
 
     def getMask(self):
         return self.mask.sum(2) > 0
@@ -364,6 +426,7 @@ class Stack(QWidget):
         # Listen to signals from other the pyqtgraph widget and the custom Image Item
         self.w.keyPressSignal.connect(self.keyPress)
         self.w.maskItem.wheel_change.connect(self.wheelChange)
+        self.w.maskItem.mouseRelease.connect(self.w.mouseReleaseEvent)
 
         self.l.addWidget(QLabel("z position"), 1, 0)
         self.l.addWidget(self.z, 1, 1)
