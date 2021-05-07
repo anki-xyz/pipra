@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
-    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction, QGraphicsPolygonItem
-from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen
+    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction, QGraphicsPolygonItem, QGraphicsPathItem
+from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen, QPainterPath
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 import numpy as np
 import pyqtgraph as pg
@@ -12,7 +12,6 @@ from skimage.color import rgb2gray
 import json
 from glob import glob
 from floodfill import floodfill
-
 
 class customImageItem(pg.ImageItem):
     wheel_change = pyqtSignal(int)
@@ -93,7 +92,7 @@ class Annotator(pg.ImageView):
 
         # Colors
         self.colorCursor = (255, 0, 100, 255)  # magenta
-        self.colorMask   = (20, 240, 92, 255)
+        self.colorMask   = (20, 240, 92, 255) # green
         self.colorOthers = (30, 30, 20, 255)
         self.colorBlack  = (0, 0, 0, 0)
 
@@ -105,7 +104,8 @@ class Annotator(pg.ImageView):
         # XY coordinates of mouse
         self.xy = None
         self.xys = []
-        self.polygon = QGraphicsPolygonItem(QPolygonF(self.xys))
+
+        self.polygon = QGraphicsPathItem(QPainterPath())
         self.polygon.setPen(QPen(Qt.red, 1, Qt.SolidLine))
         self.getView().addItem(self.polygon)
 
@@ -144,10 +144,13 @@ class Annotator(pg.ImageView):
         # self.getView().setLeftButtonAction('rect') # Zoom via rectangle
 
     def keyPressEvent(self, ev):
+        # If there is a key constantly pressed, i.e. Space for navigating,
+        # just don't bother...
         if ev.isAutoRepeat() and ev.key() == Qt.Key_Space:
             ev.ignore()
             return
 
+        # Talk to QMainWidget
         self.keyPressSignal.emit(ev.key())
         modifiers = QApplication.keyboardModifiers()
 
@@ -174,9 +177,11 @@ class Annotator(pg.ImageView):
 
             self.showMask = not self.showMask
 
+        # Change Circle and Block
         elif ev.key() == Qt.Key_M:
             self.mode = 'circle' if self.mode == 'block' else 'block'
 
+        # Change to OUTLINE mode
         elif ev.key() == Qt.Key_O:
             if self.mode != 'outline':
                 self.mode = 'outline'
@@ -186,21 +191,26 @@ class Annotator(pg.ImageView):
                 self.mode = 'circle'
                 self.disableOutline()
 
+        # Go back in history...
         elif ev.key() == Qt.Key_Z and modifiers == Qt.ControlModifier:
             if len(self.history):
                 old_mask = self.history.pop()
                 self.mask[:, :] = old_mask
                 self.maskItem.setImage(self.mask)
 
+        # Clear mask
         elif ev.key() == Qt.Key_X:
             self.mask[:, :] = False
 
+        # Move 
         elif ev.key() == Qt.Key_Space:
             self.maskItem.spaceIsDown = True
 
+        # And draw something, i.e. the changed cursor
         self.paint()
 
     def keyReleaseEvent(self, ev):
+        # Don't bother if this is auto-repeat
         if ev.isAutoRepeat():
             ev.ignore()
             return
@@ -212,14 +222,17 @@ class Annotator(pg.ImageView):
         modifiers = QApplication.keyboardModifiers()
 
         if modifiers != Qt.ShiftModifier and not self.maskItem.spaceIsDown:
+            # Add to mask in drawing mode
             if e.button() == Qt.LeftButton and self.mode != 'outline':
                 self.maskItem.mode = 'add'
                 self.maskItem.save_history = True
                 self.paint(True)
 
+            # Add to mask in outline mode
             elif e.button() == Qt.LeftButton and self.mode == 'outline':
                 self.recordPolygon()
 
+            # Remove from mask in drawing mode
             if e.button() == Qt.RightButton:
                 self.maskItem.mode = 'remove'
                 self.maskItem.save_history = True
@@ -300,9 +313,11 @@ class Annotator(pg.ImageView):
         # self.setWindowTitle('{}'.format(self.maskItem.clicked))
 
     def enableOutline(self):
+        # Change Cursor to visualize it's a different mode
         self.setCursor(QCursor(Qt.PointingHandCursor))
 
     def disableOutline(self):
+        # Change Cursor to visualize it's again normal mode
         self.setCursor(QCursor(Qt.ArrowCursor))
 
     def recordPolygon(self):
@@ -312,9 +327,9 @@ class Annotator(pg.ImageView):
             self.xys.append(xy)
         
             # Create polygon to be drawn on image temporarily
-            p = self.polygon.polygon()
-            p.append(xy)
-            self.polygon.setPolygon(p)
+            path = QPainterPath()
+            path.addPolygon(QPolygonF(self.xys))
+            self.polygon.setPath(path)
 
     def mouseReleaseEvent(self):
         if not self.mode == 'outline':
@@ -335,7 +350,7 @@ class Annotator(pg.ImageView):
 
         # Reset polygon for next drawing
         self.xys = []
-        self.polygon.setPolygon(QPolygonF())
+        self.polygon.setPath(QPainterPath())
 
     def mouseMoveEvent(self, e):
         # Save mouse position
