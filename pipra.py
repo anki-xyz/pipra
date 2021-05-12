@@ -1,6 +1,8 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
-    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, QAction, QGraphicsPolygonItem, QGraphicsPathItem
-from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen, QPainterPath
+    QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, \
+    QAction, QGraphicsPolygonItem, QGraphicsPathItem
+from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen, \
+    QPainterPath
 from PyQt5.QtCore import Qt, pyqtSignal, QPoint
 import numpy as np
 import pyqtgraph as pg
@@ -105,6 +107,8 @@ class Annotator(pg.ImageView):
         self.xy = None
         self.xys = []
 
+        # Outline drawing prerequisites
+        # Initiliaze a line with zero points
         self.polygon = QGraphicsPathItem(QPainterPath())
         self.polygon.setPen(QPen(Qt.red, 1, Qt.SolidLine))
         self.getView().addItem(self.polygon)
@@ -246,6 +250,7 @@ class Annotator(pg.ImageView):
         xy = self.getImageItem().mapFromScene(self.xy)
         radius = self.radius
 
+        # Current mouse location is outside of scene, ignore... 
         if xy.x() < 0 or xy.x() >= self.shape[0] or xy.y() < 0 or xy.y() >= self.shape[1]:
             return
 
@@ -396,6 +401,10 @@ class Annotator(pg.ImageView):
         self.mask[self.mask.sum(2) > 0] = self.colorMask
         self.paint()
 
+
+#########################################
+## STACK (central widget in QMainWindow)
+#########################################
 class Stack(QWidget):
     def __init__(self, stack, mask=None, is_folder=False):
         super().__init__()
@@ -403,19 +412,24 @@ class Stack(QWidget):
         self.stack = stack
         self.is_folder = is_folder
 
+        # No masks were provided, i.e. opening video first time
         if mask is None:
+            # Create N masks for images in folder
             if is_folder:
                 self.mask = [np.zeros(im.shape[:2], dtype=np.bool) for im in stack]
 
+            # Create 1 mask for 3D stack (t, x, y) or (z, x, y)
             else:
                 self.mask = np.zeros(stack.shape[:3], dtype=np.bool)
             
         else:
+            # Use provided mask
             self.mask = mask
 
         self.curId = 0
         self.listActive = False
 
+        # Use the Annotator ImageView to show the ACTIVE image in stack
         self.w = Annotator(self.stack[self.curId],
                            self.mask[self.curId],
                            parent=self)
@@ -424,9 +438,8 @@ class Stack(QWidget):
 
         self.l.addWidget(self.w, 0, 0, 1, 2)
         self.w.show()
-        #self.setFixedWidth(self.w.width())
-        #self.setFixedHeight(self.w.height())
-
+        
+        # Slider for z- or t- position
         self.z = QSlider(orientation=Qt.Horizontal)
         self.z.setMinimum(0)
 
