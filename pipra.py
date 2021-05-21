@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
     QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, \
-    QAction, QGraphicsPolygonItem, QGraphicsPathItem
+    QAction, QGraphicsPathItem
 from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen, \
     QPainterPath
-from PyQt5.QtCore import Qt, pyqtSignal, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
 import pyqtgraph as pg
 import imageio as io
@@ -674,21 +674,28 @@ class Main(QMainWindow):
 
             self.d = os.path.dirname(self.fn)
 
+            # NRRD files from ImageJ or CMTK
+            # typically confocal or 2p image data
             if file.endswith("nrrd"):
                 import nrrd
                 s, metadata = nrrd.read(file)
                 s = s.transpose(2, 0, 1).copy()
                 s = np.repeat(s[..., None], 3, 3)
 
+            # Reading data with imageio (tif, mp4, ...)
             else:
-                s = io.mimread(file, memtest=False)
+                try:
+                    s = io.mimread(file, memtest=False)
 
-                if len(s[0].shape) == 2:
-                    s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1)
-                    s = np.repeat(s[..., None], 3, 3)
-                else:
-                    s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1, 3)
-                print("Stack shape: ", s.shape)
+                    if len(s[0].shape) == 2:
+                        s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1)
+                        s = np.repeat(s[..., None], 3, 3)
+                    else:
+                        s = np.asarray(s, dtype=s[0].dtype).transpose(0, 2, 1, 3)
+                    print("Stack shape: ", s.shape)
+                except Exception as e:
+                    QMessageBox.critical(self, "Could not load data", f"Could not open\n{file}\n\n{e}")
+                    return
 
             if os.path.isfile(self.fn_mask):
                 mask = fl.load(self.fn_mask, "/mask")
