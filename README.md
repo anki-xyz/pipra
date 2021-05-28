@@ -8,6 +8,14 @@ It opens tiff stacks and videos (as supported by imageio ```mimread```), and can
 To try out the ```PiPrA``` tool, simple close the **Open File** dialog,
 to get some dummy data.
 
+# How to get PiPrA
+
+    > pip install pipra
+    
+And then you can execute it by just writing
+
+    > pipra
+
 # Dependencies
 
 - PyQt5 (in Anaconda)
