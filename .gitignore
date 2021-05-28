@@ -1,3 +1,7 @@
 __pycache__/floodfill.cpython-36.pyc
 .vscode/
 __pycache__/floodfill.cpython-37.pyc
+build/
+dist/
+pipra/__pycache__
+pipra.egg-info

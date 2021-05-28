@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, \
     QSlider, QLabel, QFileDialog, QColorDialog, QMessageBox, QInputDialog, \
     QAction, QGraphicsPathItem
-from PyQt5.QtGui import QPainter, QColor, QCursor, QPolygonF, QPen, \
+from PyQt5.QtGui import QKeySequence, QPainter, QColor, QCursor, QPolygonF, QPen, \
     QPainterPath
 from PyQt5.QtCore import Qt, pyqtSignal
 import numpy as np
@@ -13,7 +13,7 @@ from skimage.draw import disk, polygon
 from skimage.color import rgb2gray
 import json
 from glob import glob
-from floodfill import floodfill
+from .floodfill import floodfill
 
 class customImageItem(pg.ImageItem):
     wheel_change = pyqtSignal(int)
@@ -192,6 +192,19 @@ class Annotator(pg.ImageView):
                 self.enableOutline()
 
             else:
+                self.mode = 'circle'
+                self.disableOutline()
+
+        # Cycle through options
+        elif ev.key() == Qt.Key_1:
+            if self.mode == 'circle':
+                self.mode = 'block'
+
+            elif self.mode == 'block':
+                self.mode = 'outline'
+                self.enableOutline()
+
+            elif self.mode == 'outline':
                 self.mode = 'circle'
                 self.disableOutline()
 
@@ -534,11 +547,11 @@ class Main(QMainWindow):
         self.menu = self.menuBar()
 
         self.file = self.menu.addMenu("&File")
-        self.file.addAction("Open file", self.open)
+        self.file.addAction("Open file", self.open, QKeySequence("Ctrl+O"))
         self.file.addAction("Open folder", self.openFolder)
-        self.file.addAction("Save", self.save)
+        self.file.addAction("Save", self.save, QKeySequence("Ctrl+S"))
         self.file.addSeparator()
-        self.file.addAction("Export mask", self.export)
+        self.file.addAction("Export mask", self.export, QKeySequence("Ctrl+E"))
         self.file.addSeparator()
         self.file.addAction("Close", self.close)
 
@@ -707,7 +720,6 @@ class Main(QMainWindow):
             self.stack = Stack(s, mask)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
-            self.stack.w.keyPressSignal.connect(self.savekeyboard)
 
         # Debug mode
         else:
@@ -729,7 +741,6 @@ class Main(QMainWindow):
             self.stack = Stack(s)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
-            self.stack.w.keyPressSignal.connect(self.savekeyboard)
 
         self.settings.setEnabled(True)
 
@@ -775,7 +786,6 @@ class Main(QMainWindow):
             self.stack = Stack(ims, mask, is_folder=True)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
-            self.stack.w.keyPressSignal.connect(self.savekeyboard)
 
             self.settings.setEnabled(True)
 
@@ -835,13 +845,6 @@ class Main(QMainWindow):
 
             else:
                 pass
-        
-
-    def savekeyboard(self, key):
-        modifiers = QApplication.keyboardModifiers()
-
-        if key == Qt.Key_S and modifiers == Qt.ControlModifier:
-            self.save()
 
     def close(self):
         reply = QMessageBox.question(self,
@@ -851,7 +854,7 @@ class Main(QMainWindow):
         if reply == QMessageBox.Yes:
             super().close()
 
-if __name__ == '__main__':
+def main():
     import sys
     app = QApplication(sys.argv)
 
@@ -859,4 +862,7 @@ if __name__ == '__main__':
     m.show()
 
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
 
