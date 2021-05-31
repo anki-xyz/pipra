@@ -39,11 +39,13 @@ Alternatively: you may use the outline mode for large areas (see shortcuts below
 7) To move the scene, keep the ```Shift``` key pressed.
 8) For flood fill mode, keep ```Ctrl``` pressed, and click on the desired seed pixel.
 
-# Saving
+# Saving and Exporting
 
 Everything is stored as HDF5 file, the dimensions are (z/time, x, y), dtype is boolean.
 Use ```flammkuchen``` or ```PyTables``` to read the file.
 Also, when annotating a folder, it contains a list of the filenames in the same order as the masks.
+
+You can also export masks to a more common format, such as TIF files or MP4 (`Ctrl+E`).
 
 # Shortcuts
 
@@ -66,9 +68,11 @@ These shortcuts make your life much easier:
 
 - `Space pressed+Left Click+Mouse move` Move scene (similar to photoshop)
 - `Ctrl+Mouse wheel` change frame forward (wheel up) and backward (wheel down)
+- `Ctrl+E` Export segmentation as TIF or MP4
+- `Ctrl+O` Open file
 
 # How to cite PiPrA
 
-We published ```PiPrA``` here, please use the following citation:
+We published ```PiPrA```, please use the following citation:
 
-Gómez, P., Kist, A.M., Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3
+Gómez, P.\*, Kist, A.M.\*, Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3
