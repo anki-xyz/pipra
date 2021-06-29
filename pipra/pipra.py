@@ -13,13 +13,18 @@ from skimage.draw import disk, polygon
 from skimage.color import rgb2gray
 import json
 from glob import glob
-from .floodfill import floodfill
+
+### Import related functions
+from floodfill import floodfill
+from grabcut import GrabCut
 
 class customImageItem(pg.ImageItem):
     wheel_change = pyqtSignal(int)
     mouseRelease = pyqtSignal()
 
     def __init__(self, *args, **kwargs):
+        """Custom pyqtgraph ImageItem to allow wheel and mouse events for dragging and drawing
+        """
         super().__init__(*args, **kwargs)
         self.clicked = False
         self.mode = 'add'
@@ -46,6 +51,11 @@ class customImageItem(pg.ImageItem):
             super().wheelEvent(wh)
 
     def mouseDragEvent(self, e):
+        """allows dragging image and live painting
+
+        Args:
+            e (event): Qt event 
+        """
         modifiers = QApplication.keyboardModifiers()
 
         # When SHIFT is pressed,
@@ -80,6 +90,14 @@ class Annotator(pg.ImageView):
     keyPressSignal = pyqtSignal(int)
 
     def __init__(self, im, mask=None, parent=None):
+        """The drawing environment
+
+        Args:
+            im (numpy.ndarray): The image to be masked
+            mask (numpy.ndarray, optional): The binary mask for `im`, 
+                will be initialized as zeros when not provided. Defaults to None.
+            parent (QWidget, optional): Used to show ImageView in parent QWidget. Defaults to None.
+        """
         # Set Widget as parent to show ImageView in Widget
         super().__init__(parent=parent)
 
@@ -89,6 +107,8 @@ class Annotator(pg.ImageView):
 
         self.history = []
         self.saved = True
+
+        # Flood fill settings
         self.tolerance = 5
         self.only_darker_px = True
 
@@ -100,7 +120,7 @@ class Annotator(pg.ImageView):
 
         # Call mouse moved event slot
         self.proxy = pg.SignalProxy(self.scene.sigMouseMoved,
-                                    rateLimit=60,
+                                    rateLimit=120,
                                     slot=self.mouseMoveEvent)
 
         # XY coordinates of mouse
@@ -148,6 +168,11 @@ class Annotator(pg.ImageView):
         # self.getView().setLeftButtonAction('rect') # Zoom via rectangle
 
     def keyPressEvent(self, ev):
+        """Handling the main shortcuts
+
+        Args:
+            ev (QEvent): Qt event
+        """
         # If there is a key constantly pressed, i.e. Space for navigating,
         # just don't bother...
         if ev.isAutoRepeat() and ev.key() == Qt.Key_Space:
@@ -195,6 +220,16 @@ class Annotator(pg.ImageView):
                 self.mode = 'circle'
                 self.disableOutline()
 
+        # Change to GRABCUT mode
+        elif ev.key() == Qt.Key_P:
+            if self.mode != 'grabcut':
+                self.mode = 'grabcut'
+                self.enableGrabCut()
+
+            else:
+                self.mode = 'circle'
+                self.disableGrabCut()
+
         # Cycle through options
         elif ev.key() == Qt.Key_1:
             if self.mode == 'circle':
@@ -240,7 +275,7 @@ class Annotator(pg.ImageView):
 
         if modifiers != Qt.ShiftModifier and not self.maskItem.spaceIsDown:
             # Add to mask in drawing mode
-            if e.button() == Qt.LeftButton and self.mode != 'outline':
+            if e.button() == Qt.LeftButton and self.mode not in ('outline', 'grabcut'):
                 self.maskItem.mode = 'add'
                 self.maskItem.save_history = True
                 self.paint(True)
@@ -248,6 +283,9 @@ class Annotator(pg.ImageView):
             # Add to mask in outline mode
             elif e.button() == Qt.LeftButton and self.mode == 'outline':
                 self.recordPolygon()
+
+            elif e.button() == Qt.LeftButton and self.mode == 'grabcut':
+                self.drawRectangle() 
 
             # Remove from mask in drawing mode
             if e.button() == Qt.RightButton:
@@ -286,7 +324,7 @@ class Annotator(pg.ImageView):
             rr, cc = disk((xy.x(), xy.y()), radius, shape=self.shape)
             cursorMask[rr, cc] = True
 
-        elif self.mode == 'outline':
+        elif self.mode == 'outline' or self.mode == 'grabcut':
             pass
 
         # Show the cursorMask colored
@@ -323,12 +361,10 @@ class Annotator(pg.ImageView):
 
         # Update cursor image
         self.currentCursorItem.setImage(self.currentCursor)
+
         # Update mask image
         if self.showMask:
             self.maskItem.setImage(self.mask)
-
-        # Debugging - found out that one needs to accept the drag event
-        # self.setWindowTitle('{}'.format(self.maskItem.clicked))
 
     def enableOutline(self):
         # Change Cursor to visualize it's a different mode
@@ -337,6 +373,37 @@ class Annotator(pg.ImageView):
     def disableOutline(self):
         # Change Cursor to visualize it's again normal mode
         self.setCursor(QCursor(Qt.ArrowCursor))
+
+    def enableGrabCut(self):
+        # Change Cursor to visualize it's a different mode
+        self.setCursor(QCursor(Qt.CrossCursor))
+
+    def disableGrabCut(self):
+        # Change Cursor to visualize it's again normal mode
+        self.setCursor(QCursor(Qt.ArrowCursor))
+
+    def drawRectangle(self):
+        if self.maskItem.clicked:
+            # Get mouse coordinates
+            xy = self.getImageItem().mapFromScene(self.xy)
+            self.xys.append(xy)
+
+            # Get first and last point
+            x0, y0 = self.xys[0].x(), self.xys[0].y()
+            x1, y1 = self.xys[-1].x(), self.xys[-1].y()
+
+            # Sort corners to ensure corner orientation is
+            # top/left to bottom/right
+            x0, x1 = min(x0, x1), max(x0, x1)
+            y0, y1 = min(y0, y1), max(y0, y1)
+
+            # Save rectangle  x   y  w      h
+            self.rectangle = x0, y0, x1-x0, y1-y0
+
+            # Show rectangle 
+            path = QPainterPath()
+            path.addRect(*self.rectangle)
+            self.polygon.setPath(path)
 
     def recordPolygon(self):
         if self.maskItem.clicked:
@@ -350,19 +417,32 @@ class Annotator(pg.ImageView):
             self.polygon.setPath(path)
 
     def mouseReleaseEvent(self):
-        if not self.mode == 'outline':
+        if self.mode == 'outline':
+            # Create polygon from xy locations
+            xys = [(i.x(), i.y()) for i in self.xys]
+            xys = np.asarray(xys, dtype=np.int32)
+            rr, cc = polygon(xys[:,0], xys[:,1], self.shape)
+
+            if self.maskItem.save_history:
+                self.history.append(self.mask.copy())
+
+            # Add polygon px inside of contour to mask
+            self.mask[rr, cc] = self.colorMask
+
+        elif self.mode == 'grabcut':
+            # Get image from scene
+            im = self.getImageItem().image 
+
+            # Apply GrabCut algorithm using drawn rectangle as initialization
+            mask = GrabCut(im, 
+                (self.rectangle[1], self.rectangle[0], self.rectangle[3], self.rectangle[2]))
+
+            # Update mask
+            self.mask[mask] = self.colorMask
+
+        else:
             return
 
-        # Create polygon from xy locations
-        xys = [(i.x(), i.y()) for i in self.xys]
-        xys = np.asarray(xys, dtype=np.int32)
-        rr, cc = polygon(xys[:,0], xys[:,1], self.shape)
-
-        if self.maskItem.save_history:
-            self.history.append(self.mask.copy())
-
-        # Add polygon px inside of contour to mask
-        self.mask[rr, cc] = self.colorMask
         # Update mask
         self.maskItem.setImage(self.mask)
 
@@ -375,25 +455,41 @@ class Annotator(pg.ImageView):
         self.xy = e[0]
 
         # Call painting routine to update cursor and mask images
-        if not self.maskItem.spaceIsDown and not self.mode == 'outline':
+        if not self.maskItem.spaceIsDown and self.mode not in ('outline', 'grabcut'):
             self.paint()
 
         elif self.mode == 'outline':
             self.recordPolygon()
 
+        elif self.mode == 'grabcut':
+            self.drawRectangle()
+
     def getMask(self):
         return self.mask.sum(2) > 0
 
-    def setZ(self, im, mask=None, levels=None):
+    def setZ(self, im, mask=None):
+        """Show image at position z. 
+
+        Args:
+            im (numpy.ndarray): The image to be shown
+            mask (numpy.ndarray, optional): If already a mask exists, 
+                otherwise it will be initialized with zeros. Defaults to None.
+        """
+        # Set image
         self.setImage(im, autoRange=False, autoLevels=False)
+
+        # Clean history
         self.history = []
         self.shape = im.shape[:2]
 
+        # Create new mask
         self.mask = np.zeros(self.shape + (4,), dtype=np.uint8)
 
+        # If mask is provided, paint foreground pixels
         if mask is not None:
             self.mask[mask] = self.colorMask
 
+        # Show mask image and force paint event
         self.maskItem.setImage(self.mask)
         self.paint()
 
@@ -420,6 +516,16 @@ class Annotator(pg.ImageView):
 #########################################
 class Stack(QWidget):
     def __init__(self, stack, mask=None, is_folder=False):
+        """Stack(QWidget)
+
+        The `Stack` class carries the whole image stack and the respective masks.
+        If it is a folder, it generates empty masks for each image.
+
+        Args:
+            stack (list or numpy.ndarray): The image stack
+            mask (numpy.ndarray, optional): The corresponding masks to the image stack. Defaults to None.
+            is_folder (bool, optional): If the image stack is derived from a folder. Defaults to False.
+        """
         super().__init__()
 
         self.stack = stack
@@ -475,6 +581,9 @@ class Stack(QWidget):
         self.setLayout(self.l)
 
     def changeZ(self):
+        """Slot for a change in `z` or `t` along the image stack. 
+        Saves the current state and updates the image in `Annotator`.
+        """
         # Save current mask
         self.mask[self.curId] = self.w.getMask()
 
@@ -517,9 +626,15 @@ class Stack(QWidget):
 
         # Copy mask from previous (-1) mask
         elif key == Qt.Key_C:
-            if self.mask[self.curId].sum() == 0 and self.curId > 0:
-                # Replace mask
-                self.mask[self.curId] = self.mask[self.curId-1]
+            if self.mask[self.curId].sum() == 0:
+                if self.curId > 0 and modifiers != Qt.ShiftModifier:
+                    # Replace mask
+                    m = self.mask[self.curId-1]
+
+                if self.curId < self.mask.shape[0]-1 and modifiers == Qt.ShiftModifier:
+                    m = self.mask[self.curId+1]
+
+                self.mask[self.curId] = m
                 # Get the state (i.e. position, zoom, ...)
                 viewBoxState = self.w.getView().getState()
                 levels = self.w.getImageItem().levels
@@ -530,14 +645,19 @@ class Stack(QWidget):
                 self.w.getImageItem().setLevels(levels)
 
     def getMasks(self):
+        """Saves the current mask and returns all masks.
+
+        Returns:
+            numpy.ndarray: The masks
+        """
         self.mask[self.curId] = self.w.getMask()
         return self.mask
 
-    def keyPressEvent(self, e):
-        modifiers = QApplication.keyboardModifiers()
+    # def keyPressEvent(self, e):
+    #     modifiers = QApplication.keyboardModifiers()
 
-        if e.key() == Qt.Key_S and modifiers == Qt.ControlModifier:
-            self.w.keyPressSignal.emit(e.key())
+    #     if e.key() == Qt.Key_S and modifiers == Qt.ControlModifier:
+    #         self.w.keyPressSignal.emit(e.key())
 
 class Main(QMainWindow):
     def __init__(self):
