@@ -1,5 +1,7 @@
 # PiPrA (Pixel Precise Annotator)
 
+[![PyPI Version](https://img.shields.io/pypi/v/pipra)](https://pypi.org/project/pipra/)
+
 ![PiPrA Logo](ims/pipra.png)
 
 ```PiPrA``` allows to label data in a binary fashing (fore-and background) pixel-precisely, using painting or flood filling.
