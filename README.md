@@ -34,12 +34,24 @@ Works with the latest libraries much better (PyQt5==5.15.4, pyqtgraph==0.12.1, p
 2) The brush is by default magenta, the foreground green, you can change these colors in the settings, 
 and you are able to save and restore old settings.
 3) Draw with left mouse click, you can paint a larger surface by keeping the left mouse button pressed.
-Alternatively: you may use the outline mode for large areas (see shortcuts below)
+Alternatively: you may use the outline mode for large areas (see shortcuts below) or the GrabCut mode to
+estimate the foreground in a drawn rectangle.
 4) Remove area with right mouse click with given brush size
 5) Use the mouse wheel to zoom in/out 
 6) Adjust contrast/brightness by adjusting the levels on the right hand side. These settings are kept for the entire video.
 7) To move the scene, keep the ```Shift``` key pressed.
 8) For flood fill mode, keep ```Ctrl``` pressed, and click on the desired seed pixel.
+
+## Drawing modalities
+
+Specifically, ```PiPrA``` offers four different annotation modalities:
+
+a) brush
+b) outline
+c) flood fill
+d) [GrabCut](https://dl.acm.org/doi/10.1145/1186562.1015720)
+
+![Different drawing modalities](docs/images/modalities.png)
 
 # Saving and Exporting
 
@@ -63,6 +75,7 @@ These shortcuts make your life much easier:
 - ```W```, ```A```, ```S```, ```D``` to change frame forward (```W, D```)/backward (```A, S```)
 - ```M``` change brush from circle to block
 - `O` change brush to outline mode: **Draw outline around ROI, then the inside will be filled**
+- `P` change brush to grabcut mode: **Draw rectangle around ROI, GrabCut estimates the foreground**
 - ```2``` make brush smaller (as small as 1 px)
 - ```8``` make brush bigger 
 
