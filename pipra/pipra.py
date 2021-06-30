@@ -622,7 +622,7 @@ class PipraStack(QWidget):
         # Set the new image
         im = self.stack[self.curId]
 
-        self.w.setZ(im, self.mask[self.curId], levels)
+        self.w.setZ(im, self.mask[self.curId])
 
         self.w.getView().setState(viewBoxState)
         self.w.getImageItem().setLevels(levels)
