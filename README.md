@@ -1,6 +1,8 @@
 # PiPrA (Pixel Precise Annotator)
 
 [![PyPI Version](https://img.shields.io/pypi/v/pipra)](https://pypi.org/project/pipra/)
+[![Documentation Status](https://readthedocs.org/projects/pipra/badge/?version=latest)](https://pipra.readthedocs.io/en/latest/?badge=latest)
+
 
 ![PiPrA Logo](docs/images/pipra.png)
 

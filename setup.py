@@ -10,7 +10,7 @@ setup(
     name="pipra",
     long_description=long_description,
     long_description_content_type='text/markdown',
-    version="0.3",
+    version="0.3.1",
     author="Andreas M Kist",
     author_email="andreas.kist@fau.de",
     license="GPLv3",
@@ -24,6 +24,7 @@ setup(
         "scikit-image",
         "imageio",
         "imageio-ffmpeg",
+        'opencv-python-headless'
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
