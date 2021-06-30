@@ -15,10 +15,10 @@ import json
 from glob import glob
 
 ### Import related functions
-from floodfill import floodfill
-from grabcut import GrabCut
+from .floodfill import floodfill
+from .grabcut import GrabCut
 
-class customImageItem(pg.ImageItem):
+class PipraImageItem(pg.ImageItem):
     wheel_change = pyqtSignal(int)
     mouseRelease = pyqtSignal()
 
@@ -86,7 +86,7 @@ class customImageItem(pg.ImageItem):
                 self.save_history = False
 
 
-class Annotator(pg.ImageView):
+class PipraImageView(pg.ImageView):
     keyPressSignal = pyqtSignal(int)
 
     def __init__(self, im, mask=None, parent=None):
@@ -147,7 +147,7 @@ class Annotator(pg.ImageView):
         if mask is not None:
             self.mask[mask] = self.colorMask
 
-        self.maskItem = customImageItem(
+        self.maskItem = PipraImageItem(
             self.mask,
             compositionMode=QPainter.CompositionMode_Plus,
         )
@@ -162,10 +162,6 @@ class Annotator(pg.ImageView):
         self.getView().addItem(self.currentCursorItem)
         self.getView().addItem(self.maskItem)
         self.getView().setMenuEnabled(False)
-
-        # Interesting things to keep in mind:
-        # self.getView().setMouseEnabled(False, False)
-        # self.getView().setLeftButtonAction('rect') # Zoom via rectangle
 
     def keyPressEvent(self, ev):
         """Handling the main shortcuts
@@ -294,6 +290,11 @@ class Annotator(pg.ImageView):
                 self.paint(True)
 
     def paint(self, forcePaint=False):
+        """Painting event
+
+        Args:
+            forcePaint (bool, optional): Force painting event to be executed. Defaults to False.
+        """
         # If cursor position is not set
         if self.xy is None:
             return
@@ -384,7 +385,7 @@ class Annotator(pg.ImageView):
 
     def drawRectangle(self):
         if self.maskItem.clicked:
-            # Get mouse coordinates
+            # Get mouse coordinates and store them
             xy = self.getImageItem().mapFromScene(self.xy)
             self.xys.append(xy)
 
@@ -465,6 +466,11 @@ class Annotator(pg.ImageView):
             self.drawRectangle()
 
     def getMask(self):
+        """Generates binary mask
+
+        Returns:
+            numpy.ndarray: binary mask at current location
+        """
         return self.mask.sum(2) > 0
 
     def setZ(self, im, mask=None):
@@ -494,6 +500,15 @@ class Annotator(pg.ImageView):
         self.paint()
 
     def setColor(self, colorCursor=None, colorMask=None, colorOthers=None, colorBlack=None):
+        """Set color for cursor, mask, others and black.
+        Colors need to be specified in RGBA (0...255).
+
+        Args:
+            colorCursor (tuple, optional): Cursor color, default magenta. Defaults to None.
+            colorMask (tuple, optional): Mask color, default green. Defaults to None.
+            colorOthers (tuple, optional): Other color. Defaults to None.
+            colorBlack (tuple, optional): Black color, default pitch black. Defaults to None.
+        """
         if colorCursor:
             self.colorCursor = colorCursor
 
@@ -511,14 +526,14 @@ class Annotator(pg.ImageView):
         self.paint()
 
 
-#########################################
-## STACK (central widget in QMainWindow)
-#########################################
-class Stack(QWidget):
+#############################################
+## PipraStack (central widget in QMainWindow)
+#############################################
+class PipraStack(QWidget):
     def __init__(self, stack, mask=None, is_folder=False):
         """Stack(QWidget)
 
-        The `Stack` class carries the whole image stack and the respective masks.
+        The `PipraStack` class carries the whole image stack and the respective masks.
         If it is a folder, it generates empty masks for each image.
 
         Args:
@@ -548,8 +563,8 @@ class Stack(QWidget):
         self.curId = 0
         self.listActive = False
 
-        # Use the Annotator ImageView to show the ACTIVE image in stack
-        self.w = Annotator(self.stack[self.curId],
+        # Use an ImageView to show the ACTIVE image in stack
+        self.w = PipraImageView(self.stack[self.curId],
                            self.mask[self.curId],
                            parent=self)
 
@@ -566,6 +581,7 @@ class Stack(QWidget):
             self.z.setMaximum(len(self.stack)-1)
         else:
             self.z.setMaximum(self.stack.shape[0]-1)
+
         self.z.setValue(0)
         self.z.setSingleStep(1)
         self.z.valueChanged.connect(self.changeZ)
@@ -582,7 +598,7 @@ class Stack(QWidget):
 
     def changeZ(self):
         """Slot for a change in `z` or `t` along the image stack. 
-        Saves the current state and updates the image in `Annotator`.
+        Saves the current state and updates the image in the ImageView environment.
         """
         # Save current mask
         self.mask[self.curId] = self.w.getMask()
@@ -612,9 +628,19 @@ class Stack(QWidget):
         self.w.getImageItem().setLevels(levels)
 
     def wheelChange(self, direction):
+        """Change z or t signal depending on wheel direction
+
+        Args:
+            direction (int): Wheel direction (up or down)
+        """
         self.z.setValue(self.curId+direction)
 
     def keyPress(self, key):
+        """Shortcuts for efficient interaction with `pipra`.
+
+        Args:
+            key ([type]): [description]
+        """
         modifiers = QApplication.keyboardModifiers()
 
         # WASD for +1 -1 -1 +1
@@ -638,8 +664,10 @@ class Stack(QWidget):
                 # Get the state (i.e. position, zoom, ...)
                 viewBoxState = self.w.getView().getState()
                 levels = self.w.getImageItem().levels
+
                 # Set new mask
                 self.w.setZ(self.stack[self.curId], self.mask[self.curId])
+
                 # Set view again
                 self.w.getView().setState(viewBoxState)
                 self.w.getImageItem().setLevels(levels)
@@ -653,13 +681,10 @@ class Stack(QWidget):
         self.mask[self.curId] = self.w.getMask()
         return self.mask
 
-    # def keyPressEvent(self, e):
-    #     modifiers = QApplication.keyboardModifiers()
-
-    #     if e.key() == Qt.Key_S and modifiers == Qt.ControlModifier:
-    #         self.w.keyPressSignal.emit(e.key())
-
-class Main(QMainWindow):
+##########################
+## Main Window
+##########################
+class PipraMain(QMainWindow):
     def __init__(self):
         super().__init__()
         self.settings_fn = None
@@ -837,7 +862,7 @@ class Main(QMainWindow):
                 mask = None
 
             # self.stack = Stack((rgb2gray(s)*255).astype(np.uint8) if len(s.shape) == 4 else s, mask)
-            self.stack = Stack(s, mask)
+            self.stack = PipraStack(s, mask)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
 
@@ -858,7 +883,7 @@ class Main(QMainWindow):
                 s[i][rr, cc] = 125
                 s[i] = gaussian(s[i], 2.5, preserve_range=True)
 
-            self.stack = Stack(s)
+            self.stack = PipraStack(s)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
 
@@ -903,7 +928,7 @@ class Main(QMainWindow):
             else:
                 mask = None
 
-            self.stack = Stack(ims, mask, is_folder=True)
+            self.stack = PipraStack(ims, mask, is_folder=True)
             self.setCentralWidget(self.stack)
             self.stack.z.valueChanged.connect(self.updateStatus)
 
@@ -940,28 +965,44 @@ class Main(QMainWindow):
             self.status.showMessage("Masks saved as {} ...".format(self.fn_mask), 1000)
 
     def export(self):
+        """Exporting segmentation masks as mp4 or tif file, or as single png files.
+        """
         if not self.fn:
             QMessageBox.critical(self, "No file loaded", "Please load first a file.")
             return
 
         fn = QFileDialog.getSaveFileName(caption="Select file that should contain exported data",
-            filter="MP4 (*.mp4);; TIFF (*.tif)")[0]
+            filter="MP4 (*.mp4);; TIFF (*.tif);; PNG (*.png)")[0]
 
         if fn:
+            masks = self.stack.getMasks().astype(np.uint8).transpose(0,2,1)*255
+
             if fn.endswith(".tif"):
-                io.mimwrite(fn, self.stack.getMasks().astype(np.uint8).transpose(0,2,1)*255)
+                io.mimwrite(fn, masks)
                 QMessageBox.information(self,
                     "Data exported",
                     f"Binary masks where exported as uint8/TIF file: \n{fn}")
 
             elif fn.endswith(".mp4"):
                 io.mimwrite(fn, 
-                    self.stack.getMasks().astype(np.uint8).transpose(0,2,1)*255,
+                    masks,
                     macro_block_size=None)
 
                 QMessageBox.information(self,
                     "Data exported",
                     f"Binary masks where exported as MP4 file: \n{fn}")
+
+            elif fn.endswith(".png"):
+
+                for i, m in enumerate(masks):
+                    fn_i = fn.replace(".png", f"_{i}.png")
+                    io.imwrite(fn_i, m)
+
+                fn_x = fn.replace(".png", "_X.png")
+
+                QMessageBox.information(self,
+                    "Data exported",
+                    f"Binary masks where exported as {len(masks)} PNG files: \n{fn_x}")
 
             else:
                 pass
@@ -975,10 +1016,12 @@ class Main(QMainWindow):
             super().close()
 
 def main():
+    """Main entry for pipra
+    """
     import sys
     app = QApplication(sys.argv)
 
-    m = Main()
+    m = PipraMain()
     m.show()
 
     sys.exit(app.exec_())

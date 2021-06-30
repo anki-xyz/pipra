@@ -2,7 +2,7 @@
 
 [![PyPI Version](https://img.shields.io/pypi/v/pipra)](https://pypi.org/project/pipra/)
 
-![PiPrA Logo](ims/pipra.png)
+![PiPrA Logo](docs/images/pipra.png)
 
 ```PiPrA``` allows to label data in a binary fashing (fore-and background) pixel-precisely, using painting or flood filling.
 It opens tiff stacks and videos (as supported by imageio ```mimread```), and can operate on single frames.
@@ -73,8 +73,9 @@ These shortcuts make your life much easier:
 - `Ctrl+E` Export segmentation as TIF or MP4
 - `Ctrl+O` Open file
 
-# How to cite PiPrA
+# Acknowledging `PiPrA`
 
-We published ```PiPrA```, please use the following citation:
+We have not published ```PiPrA``` yet.
+To acknowledge `PiPrA`, please use currently the following citation:
 
 Gómez, P.\*, Kist, A.M.\*, Schlegel, P. et al. BAGLS, a multihospital Benchmark for Automatic Glottis Segmentation. Sci Data 7, 186 (2020). https://doi.org/10.1038/s41597-020-0526-3

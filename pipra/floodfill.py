@@ -65,6 +65,18 @@ def _floodfill(im, seed, tolerance=5, only_darker_px=True):
     return segmented
 
 def floodfill(im, seed, time_it=False, tolerance=5, only_darker_px=True):
+    """Floodfill with four neighbours, speed-enhanced using numba.
+
+    Args:
+        im (numpy.ndarray): The input image
+        seed (tuple): The (y,x) coordinates of the seeding pixel
+        time_it (bool, optional): Times the floodfill procedure. Defaults to False.
+        tolerance (int, optional): Intensity tolerance to seed intensity. Defaults to 5.
+        only_darker_px (bool, optional): Floodfill for intensities [0, seed intensity + tolerance]. Defaults to True.
+
+    Returns:
+        numpy.ndarray: The floodfilled mask
+    """
     if time_it:
         t0 = time.time()
 
