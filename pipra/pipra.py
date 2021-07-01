@@ -727,6 +727,7 @@ class PipraMain(QMainWindow):
 
         self.setGeometry(300, 300, 800, 600)
         self.setWindowTitle("PiPrA")
+        self.setAcceptDrops(True)
 
     def setEqualize(self):
         if self.stack:
@@ -891,6 +892,32 @@ class PipraMain(QMainWindow):
 
         if self.settings_fn:
             self.loadSettings(settings_fn=self.settings_fn)
+
+    def dragEnterEvent(self, ev):
+        data = ev.mimeData()
+        urls = data.urls()
+        if urls:
+            if urls[0].scheme() == 'file':
+                ev.acceptProposedAction()
+
+    def dropEvent(self, ev):
+        # Retrieve file url
+        data = ev.mimeData()
+        urls = data.urls()
+
+        # Check if dropping event is a file
+        if urls and urls[0].scheme() == 'file':
+            fn = str(urls[0].path())[1:]
+
+            # Does the file exist?
+            if os.path.exists(fn):
+                self.open(fn)
+
+            # Otherwise raise error
+            else:
+                QMessageBox.critical(self,
+                    "File not found",
+                    f"Could not find file:\n{fn}")
 
     def openFolder(self, ext="png"):
         folder = QFileDialog.getExistingDirectory()
