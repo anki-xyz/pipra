@@ -21,6 +21,9 @@ def GrabCut(im, r, iterations=1):
     fgModel = np.zeros((1, 65), dtype=np.float64)
     bgModel = np.zeros((1, 65), dtype=np.float64)   
 
+    if len(im.shape) == 2:
+        im = cv2.cvtColor(im.copy(), cv2.COLOR_GRAY2BGR)
+
     mask, _, _ = cv2.grabCut(im.astype(np.uint8).copy(), # Original image
         mask, # Mask
         r,  # Rectangle from pipra
