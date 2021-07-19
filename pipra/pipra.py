@@ -13,6 +13,7 @@ from skimage.draw import disk, polygon
 from skimage.color import rgb2gray
 import json
 from glob import glob
+import platform
 
 ### Import related functions
 from .floodfill import floodfill
@@ -907,7 +908,10 @@ class PipraMain(QMainWindow):
 
         # Check if dropping event is a file
         if urls and urls[0].scheme() == 'file':
-            fn = str(urls[0].path())[1:]
+            fn = str(urls[0].path())
+
+            if platform.system() in ["Windows"]:
+                fn = fn[1:]
 
             # Does the file exist?
             if os.path.exists(fn):
