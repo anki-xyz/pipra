@@ -309,7 +309,7 @@ class PipraImageView(pg.ImageView):
 
         # Show current cursor position and painting preview
         self.currentCursor = np.zeros(self.shape+(4,), dtype=np.uint8)
-        cursorMask = np.zeros(self.shape, dtype=np.bool)
+        cursorMask = np.zeros(self.shape, dtype=np.bool_)
 
         # Different mask modes
         # Single pixel
@@ -551,11 +551,11 @@ class PipraStack(QWidget):
         if mask is None:
             # Create N masks for images in folder
             if is_folder:
-                self.mask = [np.zeros(im.shape[:2], dtype=np.bool) for im in stack]
+                self.mask = [np.zeros(im.shape[:2], dtype=np.bool_) for im in stack]
 
             # Create 1 mask for 3D stack (t, x, y) or (z, x, y)
             else:
-                self.mask = np.zeros(stack.shape[:3], dtype=np.bool)
+                self.mask = np.zeros(stack.shape[:3], dtype=np.bool_)
             
         else:
             # Use provided mask
